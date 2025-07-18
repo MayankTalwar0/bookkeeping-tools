@@ -4,11 +4,7 @@ import numpy as np
 import sys
 import os
 import tempfile
-
-
-'''
-Modify the UI (2 x2 format on screen) so users can add their LLM Key to process files other than Xero.
-'''
+import io
 
 
 print("\n=== SYS PATH ===")
@@ -70,7 +66,62 @@ with st.sidebar:
         normal_schedule = st.text_input("Normal Schedule", 
                                        value='Normal: Reminders in -1, and then every 15 Days from Due Date')
 
-uploaded_file = st.file_uploader("📤 Upload Receivable Invoice Detail (Excel)", type=["xlsx"])
+# --- 1. TITLE ---
+st.markdown(
+    "<h2 style='font-size: 2em; margin-bottom: 0;'>📤 Upload Receivable Invoice Detail (Excel)</h2>",
+    unsafe_allow_html=True,
+)
+
+# --- 2. XERO SUB-TITLE & 3-STEP INSTRUCTIONS ---
+st.markdown("#### For Xero Users")
+st.markdown(
+    """
+1.  In Xero → **Accounting → Reports → All Reports**.  
+2.  Search for **“Receivable Invoice Detail”** → choose a date range → **Export → Excel**.  
+3.  Make sure the exported file contains the columns: **Contact, Invoice Date, Due Date, Last Payment Date, Status, Invoice Total**.
+"""
+)
+
+uploaded_file = st.file_uploader(" ", type=["xlsx"])
+
+# Extra space before the expander
+st.markdown("<br>", unsafe_allow_html=True)
+
+# --- 3. ACCORDION FOR NON-XERO USERS ---
+with st.expander("🔽 Don't have Xero? Follow the instructions below", expanded=False):
+    st.markdown("#### For Non-Xero Users")
+    st.markdown(
+        """
+1.  Export your invoice ledger from your accounting software as **.xlsx**.  
+2.  Ensure the sheet includes: **Contact, Invoice_Date, Due_Date, Last_Payment_Date, Status, Invoice_Total**.  
+3.  Rename any columns that differ so they exactly match the names above (case-insensitive, underscores for spaces).
+4. Alternatively, you can download the template below and fill it out with your data.
+"""
+    )
+
+    # ---------- TEMPLATE DOWNLOAD ----------
+    st.write("")  # tiny spacer
+    template = pd.DataFrame(
+        columns=[
+            "Contact",
+            "Invoice_Date",
+            "Due_Date",
+            "Last_Payment_Date",
+            "Status",
+            "Invoice_Total",
+        ]
+    )
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+        template.to_excel(writer, index=False, sheet_name="Template")
+    buffer.seek(0)
+
+    st.download_button(
+        label="📥 Download blank template (Excel)",
+        data=buffer,
+        file_name="non_xero_template.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
 
 if uploaded_file:
     try:
